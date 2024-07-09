@@ -63,12 +63,11 @@ class ApiRepository {
     }
     private fun handleError(e: Exception): String {
         e.printStackTrace()
-        val message = when (e) {
+        return when (e) {
             is ConnectException -> connectErrorMessage
             is TimeoutException -> timeoutErrorMessage
             else -> unknownErrorMessage
         }
-        return message
     }
     private fun generateImplicitFile(byteArray: ByteArray): ImplicitFile {
         val file = File("file.txt")
