@@ -60,12 +60,9 @@ class ApiRepository(
     suspend fun getTopEventSearchQuery() {
         try {
             val url = "http://$HOST:$PORT$GET_TOP_EVENTS"
-            val response = client.get(url).body<List<EventReceive>>()
-            val groupedEvents = response.groupingBy { it.details }.eachCount()
-            val combinedEvents = groupedEvents.map { "${it.key} - ${it.value}" }
-            val sortedEvents = combinedEvents.sortedByDescending { it.split(" - ")[1].toInt() }
+            val response = client.get(url).body<List<String>>()
             var message = "Все события:"
-            sortedEvents.forEach { event ->
+            response.forEach { event ->
                 message += "\n$event"
             }
             sendMessage(message)
