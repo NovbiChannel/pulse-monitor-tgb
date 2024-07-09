@@ -36,6 +36,8 @@ class ApiRepository(
     suspend fun subscribeToErrorStream() {
         try {
             client.webSocket(method = HttpMethod.Get, host = HOST, port = PORT, path = ERROR_SUBSCRIBE) {
+                val message = "Отлично, вы подписались на рассылку уведомлений об аномальных проблемах приложения."
+                sendMessage(message)
                 while (isActive) {
                     when (val frame = incoming.receive()) {
                         is Frame.Text -> {
