@@ -1,9 +1,6 @@
 package org.novbicreate.domain
 
-import eu.vendeli.tgbot.TelegramBot
-import eu.vendeli.tgbot.api.media.sendDocument
-import eu.vendeli.tgbot.api.message.message
-import eu.vendeli.tgbot.types.User
+import eu.vendeli.tgbot.types.internal.ImplicitFile
 import eu.vendeli.tgbot.utils.toImplicitFile
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -16,21 +13,16 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.Json
-import org.novbicreate.controller.Commands.HELP
-import org.novbicreate.controller.Commands.START
-import org.novbicreate.controller.Commands.TOP_EVENTS
 import org.novbicreate.domain.ApiRoutes.ERROR_SUBSCRIBE
 import org.novbicreate.domain.ApiRoutes.GET_TOP_EVENTS
 import org.novbicreate.domain.ApiRoutes.HOST
 import org.novbicreate.domain.ApiRoutes.PORT
+import org.novbicreate.presentation.common.*
 import java.io.File
 import java.net.ConnectException
 import java.util.concurrent.TimeoutException
 
-class ApiRepository(
-    private val user: User,
-    private val bot: TelegramBot
-) {
+class ApiRepository {
     private val _client = HttpClient(CIO) {
         install(WebSockets)
         install(ContentNegotiation) {
@@ -39,69 +31,48 @@ class ApiRepository(
             })
         }
     }
-    suspend fun subscribeToErrorStream() {
-        try {
+    suspend fun handleErrorStreamSubscription(
+        sendMessage: suspend (String) -> Unit,
+        sendFile: suspend (ImplicitFile) -> Unit
+    ) {
+        return try {
             _client.webSocket(method = HttpMethod.Get, host = HOST, port = PORT, path = ERROR_SUBSCRIBE) {
-                val message = "Отлично, вы подписались на рассылку уведомлений об аномальных проблемах приложения."
-                message(message).send(user, bot)
+                sendMessage(subscriptionMessage)
                 while (isActive) {
                     when (val frame = incoming.receive()) {
                         is Frame.Text -> {
-                            message(frame.readText()).send(user, bot)
+                            sendMessage(frame.readText())
                         }
                         is Frame.Binary -> {
-                            sendFile(frame.readBytes())
+                            sendFile(generateImplicitFile(frame.readBytes()))
                         }
                         else -> {}
                     }
                 }
             }
-        } catch (e: Exception) {
-            errorHandler(e)
-        }
+        } catch (e: Exception) { sendMessage(handleError(e)) }
     }
-    suspend fun getTopEventSearchQuery() {
-        try {
+    suspend fun generateEventListMessage(): String {
+        return try {
             val url = "http://$HOST:$PORT$GET_TOP_EVENTS"
             val response = _client.get(url).body<List<String>>()
-            var message = "Все события:"
-            response.forEach { event ->
-                message += "\n$event"
-            }
-            message(message).send(user, bot)
-        } catch (e: Exception) {
-            errorHandler(e)
-        }
+            var message = titleListEvents
+            response.forEach { event -> message += "\n$event" }
+            message
+        } catch (e: Exception) { handleError(e) }
     }
-    suspend fun sendAllCommands() {
-        try {
-            val commandsList = listOf(
-                "$HELP - список доступных комманд",
-                "$START - запустить бота",
-                "$TOP_EVENTS - получить топ 10 поисковых запросов"
-            )
-            var message = "Вот список доступных комманд:"
-            commandsList.forEach { command ->
-                message += "\n$command"
-            }
-            message(message).send(user, bot)
-        } catch (e: Exception) {
-            errorHandler(e)
-        }
-    }
-    private suspend fun errorHandler(e: Exception) {
+    private fun handleError(e: Exception): String {
         e.printStackTrace()
         val message = when (e) {
-            is ConnectException -> "Связь с сервером потеряна, попробуйте поже"
-            is TimeoutException -> "Время ожидания ответа от сервера истекло. Пожалуйста, попробуйте еще раз."
-            else -> "Упс... Что-то пошло не так. Попробуйте позже"
+            is ConnectException -> connectErrorMessage
+            is TimeoutException -> timeoutErrorMessage
+            else -> unknownErrorMessage
         }
-        message(message).send(user, bot)
+        return message
     }
-    private suspend fun sendFile(byteArray: ByteArray) {
+    private fun generateImplicitFile(byteArray: ByteArray): ImplicitFile {
         val file = File("file.txt")
         file.writeBytes(byteArray)
-        sendDocument(file.toImplicitFile("errors_${System.currentTimeMillis()}")).send(user, bot)
-        file.delete()
+        return file.toImplicitFile("errors_${System.currentTimeMillis()}")
     }
 }
