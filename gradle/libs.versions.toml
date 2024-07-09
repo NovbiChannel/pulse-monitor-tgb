@@ -19,8 +19,10 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 #koin
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 
+#telegram_bot
 eu-vendeli-telegramBot = { module = "eu.vendeli:telegram-bot", version.ref = "tg_bot" }
 eu-vendeli-ksp = { module = "eu.vendeli:ksp", version.ref = "tg_bot" }
+
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp_version" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
