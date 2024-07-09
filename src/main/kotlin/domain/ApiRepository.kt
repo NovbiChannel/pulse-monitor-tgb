@@ -17,7 +17,6 @@ import org.novbicreate.domain.ApiRoutes.ERROR_SUBSCRIBE
 import org.novbicreate.domain.ApiRoutes.GET_TOP_EVENTS
 import org.novbicreate.domain.ApiRoutes.HOST
 import org.novbicreate.domain.ApiRoutes.PORT
-import org.novbicreate.domain.model.EventReceive
 import java.io.File
 import java.net.ConnectException
 import java.util.concurrent.TimeoutException
