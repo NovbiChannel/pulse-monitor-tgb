@@ -1,6 +1,9 @@
 package org.novbicreate.domain
 
-import eu.vendeli.tgbot.types.internal.ImplicitFile
+import eu.vendeli.tgbot.TelegramBot
+import eu.vendeli.tgbot.api.media.sendDocument
+import eu.vendeli.tgbot.api.message.message
+import eu.vendeli.tgbot.types.User
 import eu.vendeli.tgbot.utils.toImplicitFile
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -13,6 +16,9 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.Json
+import org.novbicreate.controller.Commands.HELP
+import org.novbicreate.controller.Commands.START
+import org.novbicreate.controller.Commands.TOP_EVENTS
 import org.novbicreate.domain.ApiRoutes.ERROR_SUBSCRIBE
 import org.novbicreate.domain.ApiRoutes.GET_TOP_EVENTS
 import org.novbicreate.domain.ApiRoutes.HOST
@@ -22,10 +28,10 @@ import java.net.ConnectException
 import java.util.concurrent.TimeoutException
 
 class ApiRepository(
-    private val sendMessage: suspend (String) -> Unit,
-    private val sendDocument: suspend (ImplicitFile.InpFile) -> Unit
+    private val user: User,
+    private val bot: TelegramBot
 ) {
-    private val client = HttpClient(CIO) {
+    private val _client = HttpClient(CIO) {
         install(WebSockets)
         install(ContentNegotiation) {
             json(Json {
@@ -35,20 +41,16 @@ class ApiRepository(
     }
     suspend fun subscribeToErrorStream() {
         try {
-            client.webSocket(method = HttpMethod.Get, host = HOST, port = PORT, path = ERROR_SUBSCRIBE) {
+            _client.webSocket(method = HttpMethod.Get, host = HOST, port = PORT, path = ERROR_SUBSCRIBE) {
                 val message = "Отлично, вы подписались на рассылку уведомлений об аномальных проблемах приложения."
-                sendMessage(message)
+                message(message).send(user, bot)
                 while (isActive) {
                     when (val frame = incoming.receive()) {
                         is Frame.Text -> {
-                            val text = frame.readText()
-                            sendMessage(text)
+                            message(frame.readText()).send(user, bot)
                         }
                         is Frame.Binary -> {
-                            val fileBytes = frame.readBytes()
-                            val file = File("file.txt")
-                            file.writeBytes(fileBytes)
-                            sendDocument(file.toImplicitFile("errors_${System.currentTimeMillis()}"))
+                            sendFile(frame.readBytes())
                         }
                         else -> {}
                     }
@@ -61,12 +63,28 @@ class ApiRepository(
     suspend fun getTopEventSearchQuery() {
         try {
             val url = "http://$HOST:$PORT$GET_TOP_EVENTS"
-            val response = client.get(url).body<List<String>>()
+            val response = _client.get(url).body<List<String>>()
             var message = "Все события:"
             response.forEach { event ->
                 message += "\n$event"
             }
-            sendMessage(message)
+            message(message).send(user, bot)
+        } catch (e: Exception) {
+            errorHandler(e)
+        }
+    }
+    suspend fun sendAllCommands() {
+        try {
+            val commandsList = listOf(
+                "$HELP - список доступных комманд",
+                "$START - запустить бота",
+                "$TOP_EVENTS - получить топ 10 поисковых запросов"
+            )
+            var message = "Вот список доступных комманд:"
+            commandsList.forEach { command ->
+                message += "\n$command"
+            }
+            message(message).send(user, bot)
         } catch (e: Exception) {
             errorHandler(e)
         }
@@ -78,6 +96,12 @@ class ApiRepository(
             is TimeoutException -> "Время ожидания ответа от сервера истекло. Пожалуйста, попробуйте еще раз."
             else -> "Упс... Что-то пошло не так. Попробуйте позже"
         }
-        sendMessage(message)
+        message(message).send(user, bot)
+    }
+    private suspend fun sendFile(byteArray: ByteArray) {
+        val file = File("file.txt")
+        file.writeBytes(byteArray)
+        sendDocument(file.toImplicitFile("errors_${System.currentTimeMillis()}")).send(user, bot)
+        file.delete()
     }
 }
