@@ -5,7 +5,7 @@ import eu.vendeli.tgbot.annotations.CommandHandler
 import eu.vendeli.tgbot.api.media.sendDocument
 import eu.vendeli.tgbot.api.message.message
 import eu.vendeli.tgbot.types.User
-import org.novbicreate.controller.ControllerRoutes.BUG_REPORT_ROUTE
+import org.novbicreate.controller.CallbackRoutes.BUG_REPORT_ROUTE
 import org.novbicreate.domain.ApiRepository
 
 class ErrorCallback {

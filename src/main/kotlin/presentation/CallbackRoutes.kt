@@ -1,5 +1,5 @@
 package org.novbicreate.controller
 
-object ControllerRoutes {
+object CallbackRoutes {
     const val BUG_REPORT_ROUTE = "bugReportRoute"
 }
