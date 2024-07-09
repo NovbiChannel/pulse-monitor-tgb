@@ -17,8 +17,9 @@ dependencies {
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.ws)
     implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.client.serialization.json)
+    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.client.logging)
+    implementation(libs.koin.core)
     implementation(libs.eu.vendeli.telegramBot)
     ksp(libs.eu.vendeli.ksp)
 }
